@@ -400,7 +400,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Map
   apiKey: AIzaSyC6bwKkFSUCoEtAhGeRLzR1-lTzjQvMTeI
-  zoom: 5
+  zoom: 12
   mapResolution: 1
   mapType: 0
   screenCorner: 3
