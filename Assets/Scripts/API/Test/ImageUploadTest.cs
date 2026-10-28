@@ -5,14 +5,28 @@ using UnityEngine.Networking;
 
 public class ImageUploader : MonoBehaviour
 {
+    public static ImageUploader Instance;
+
+    private void Awake() {
+        if(Instance == null)
+        {
+            Instance = this;
+        }
+        else
+        {
+            Destroy(gameObject);
+            return;
+        }
+    }
+
     [SerializeField] private Texture2D TestImage;
 
     private string url =
         "https://api.imgbb.com/1/upload?key=7e7d546e3b03319c0ca02efebfc08b0e";
 
-    public void TestUpload()
+    public void TestUpload(Texture2D photo)
     {
-        StartCoroutine(UploadPNG(TestImage));
+        StartCoroutine(UploadPNG(photo));
     }
 
     IEnumerator UploadPNG(Texture2D imageToUpload)

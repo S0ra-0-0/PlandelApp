@@ -73,6 +73,10 @@ public class CameraScanner : MonoBehaviour
         photo.SetPixels32(pixels);
         photo.Apply();
 
+        Debug.Log("foto gemaakt?");
+
+        ImageUploader.Instance.TestUpload(photo);
+
         byte[] bytes = photo.EncodeToPNG();
         Destroy(photo);
 
