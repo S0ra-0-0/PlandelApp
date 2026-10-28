@@ -12,7 +12,7 @@ public class ImageUploader : MonoBehaviour
 
     public void TestUpload()
     {
-        StartCoroutine(TestImage);
+        StartCoroutine(UploadPNG(TestImage));
     }
 
     IEnumerator UploadPNG(Texture2D imageToUpload)

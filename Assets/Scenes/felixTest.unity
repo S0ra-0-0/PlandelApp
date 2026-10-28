@@ -628,7 +628,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 266766f3c741ab443b644a1f052ab8e1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ImageUploadTest
-  TestImage: {fileID: 2800000, guid: 10c3c4101eedad244bed1067d725a4c1, type: 3}
+  TestImage: {fileID: 2800000, guid: 69a57e3a1373542489cda6ec7b3c749f, type: 3}
 --- !u!1 &1856409433
 GameObject:
   m_ObjectHideFlags: 0
