@@ -7,83 +7,131 @@ using UnityEngine.UI;
 using UnityEngine.Android;
 #endif
 
-[RequireComponent(typeof(RawImage))]
+[RequireComponent(typeof(RectTransform))]
 public class Map : MonoBehaviour
 {
     public string apiKey;
 
+    [Header("References (assign in Inspector)")]
+    public RawImage mapImage;
+
     [Header("Map")]
-    public int zoom = 16;
+    public int zoom = 17;
     public enum resolution { low = 1, high = 2 }
     public resolution mapResolution = resolution.high;
     public enum type { roadmap, satellite, hybrid, terrain }
     public type mapType = type.roadmap;
 
+    [Header("Minimap placement")]
+    public bool applyCorner = true;
     public enum corner { TopLeft, TopRight, BottomLeft, BottomRight }
     public corner screenCorner = corner.BottomRight;
-    public float mapSize = 256f;     // size on screen (also requested size from Google, max 640)
+    public float mapSize = 256f;
     public Vector2 margin = new Vector2(20f, 20f);
 
-    [Header("Updating")]
-    public float refreshInterval = 10f;      // seconds between map refreshes
-    public float minMoveMeters = 10f;        // only refresh if you moved this far
+    [Header("Live tracking")]
+    public float smoothing = 8f;
+    public float edgePadding = 40f;
+    public float minFetchInterval = 3f;
 
-    [Header("Editor / fallback position (used when GPS is unavailable)")]
-    public float fallbackLat = 52.0907f;
-    public float fallbackLon = 5.1214f;
+    [Header("Editor / fallback (arrow keys or WASD move you in the Editor)")]
+    public double fallbackLat = 52.0907;
+    public double fallbackLon = 5.1214;
+    public double editorSpeed = 0.0005;
 
-    private RawImage rawImage;
-    private bool gpsReady = false;
-    private bool loading = false;
+    const int ImageSize = 640;
+    RectTransform root, mapRT;
 
-    private float lastLat, lastLon;
-    private int lastZoom;
-    private type lastType;
-    private float lastRequestTime = -999f;
-    private bool hasMap = false;
+    bool locationResolved, gpsReady, loading, hasMap;
+    float lastFetchTime = -999f;
+
+    double targetLat, targetLon;
+    double smoothLat, smoothLon;
+    bool smoothInit;
+
+    double centerX, centerY;
+    int fetchedZoom;
+    type fetchedType;
+    resolution fetchedRes;
 
     void Start()
     {
-        rawImage = GetComponent<RawImage>();
-        ApplyCorner();
+        root = GetComponent<RectTransform>();
+
+        if (mapImage == null)
+        {
+            Debug.LogError("Map: assign the MapImage RawImage in the Inspector.");
+            enabled = false;
+            return;
+        }
+
+        mapRT = mapImage.rectTransform;
+        mapRT.sizeDelta = new Vector2(ImageSize, ImageSize);
+        mapImage.enabled = false;
+
+        targetLat = fallbackLat;
+        targetLon = fallbackLon;
         StartCoroutine(StartLocation());
+    }
+
+    void OnDestroy()
+    {
+        if (Input.location.status == LocationServiceStatus.Running)
+            Input.location.Stop();
     }
 
     void Update()
     {
-        if (loading) return;
+        if (!locationResolved) return;
 
-        GetPosition(out float lat, out float lon);
+        UpdateTarget();
 
-        bool settingsChanged = !hasMap || zoom != lastZoom || mapType != lastType;
-        bool timeElapsed = Time.time - lastRequestTime >= refreshInterval;
-        bool moved = DistanceMeters(lat, lon, lastLat, lastLon) >= minMoveMeters;
-
-        if (settingsChanged || (timeElapsed && moved))
+        if (!smoothInit)
         {
-            StartCoroutine(GetGoogleMap(lat, lon));
+            smoothLat = targetLat;
+            smoothLon = targetLon;
+            smoothInit = true;
         }
+
+        double t = 1.0 - System.Math.Exp(-smoothing * Time.deltaTime);
+        smoothLat += (targetLat - smoothLat) * t;
+        smoothLon += (targetLon - smoothLon) * t;
+
+        if (!hasMap)
+        {
+            if (!loading && Time.time - lastFetchTime >= minFetchInterval)
+                StartCoroutine(GetGoogleMap(smoothLat, smoothLon));
+            return;
+        }
+
+        Project(smoothLat, smoothLon, fetchedZoom, out double px, out double py);
+        float dx = (float)(px - centerX);
+        float dy = (float)(py - centerY);
+
+        mapRT.anchoredPosition = new Vector2(-dx, dy);
+
+        float limit = ImageSize / 2f - mapSize / 2f - edgePadding;
+        bool nearEdge = Mathf.Abs(dx) > limit || Mathf.Abs(dy) > limit;
+        bool settingsChanged = zoom != fetchedZoom || mapType != fetchedType || mapResolution != fetchedRes;
+
+        if ((nearEdge || settingsChanged) && !loading && Time.time - lastFetchTime >= minFetchInterval)
+            StartCoroutine(GetGoogleMap(smoothLat, smoothLon));
     }
 
-    void ApplyCorner()
+    void UpdateTarget()
     {
-        RectTransform rt = rawImage.rectTransform;
-        Vector2 anchor;
-        Vector2 pos = margin;
-
-        switch (screenCorner)
+        if (gpsReady && Input.location.status == LocationServiceStatus.Running)
         {
-            case corner.TopLeft: anchor = new Vector2(0, 1); pos = new Vector2(margin.x, -margin.y); break;
-            case corner.TopRight: anchor = new Vector2(1, 1); pos = new Vector2(-margin.x, -margin.y); break;
-            case corner.BottomLeft: anchor = new Vector2(0, 0); break;
-            default: anchor = new Vector2(1, 0); pos = new Vector2(-margin.x, margin.y); break;
+            targetLat = Input.location.lastData.latitude;
+            targetLon = Input.location.lastData.longitude;
         }
-
-        rt.anchorMin = anchor;
-        rt.anchorMax = anchor;
-        rt.pivot = anchor;
-        rt.sizeDelta = new Vector2(mapSize, mapSize);
-        rt.anchoredPosition = pos;
+#if UNITY_EDITOR
+        else
+        {
+            targetLon += Input.GetAxis("Horizontal") * editorSpeed * Time.deltaTime;
+            targetLat += Input.GetAxis("Vertical") * editorSpeed * Time.deltaTime;
+        }
+#endif
     }
 
     IEnumerator StartLocation()
@@ -92,16 +140,22 @@ public class Map : MonoBehaviour
         if (!Permission.HasUserAuthorizedPermission(Permission.FineLocation))
         {
             Permission.RequestUserPermission(Permission.FineLocation);
-            yield return new WaitForSeconds(1f);
+            float waited = 0f;
+            while (!Permission.HasUserAuthorizedPermission(Permission.FineLocation) && waited < 15f)
+            {
+                waited += Time.unscaledDeltaTime;
+                yield return null;
+            }
         }
 #endif
         if (!Input.location.isEnabledByUser)
         {
-            Debug.Log("Location is disabled, using fallback position.");
+            Debug.Log("Location disabled, using fallback position.");
+            locationResolved = true;
             yield break;
         }
 
-        Input.location.Start(5f, 5f); // desired accuracy, update distance (meters)
+        Input.location.Start(1f, 1f);
 
         int wait = 20;
         while (Input.location.status == LocationServiceStatus.Initializing && wait > 0)
@@ -110,47 +164,30 @@ public class Map : MonoBehaviour
             wait--;
         }
 
-        if (Input.location.status == LocationServiceStatus.Running)
-            gpsReady = true;
-        else
-            Debug.Log("Could not get GPS, using fallback position.");
+        gpsReady = Input.location.status == LocationServiceStatus.Running;
+        if (!gpsReady) Debug.Log("Could not start GPS, using fallback position.");
+        locationResolved = true;
     }
 
-    void GetPosition(out float lat, out float lon)
-    {
-        if (gpsReady && Input.location.status == LocationServiceStatus.Running)
-        {
-            lat = Input.location.lastData.latitude;
-            lon = Input.location.lastData.longitude;
-        }
-        else
-        {
-            lat = fallbackLat;
-            lon = fallbackLon;
-        }
-    }
 
-    IEnumerator GetGoogleMap(float lat, float lon)
+    IEnumerator GetGoogleMap(double lat, double lon)
     {
         loading = true;
+        lastFetchTime = Time.time;
 
-        lastLat = lat;
-        lastLon = lon;
-        lastZoom = zoom;
-        lastType = mapType;
-        lastRequestTime = Time.time;
-        hasMap = true;
+        int reqZoom = zoom;
+        type reqType = mapType;
+        resolution reqRes = mapResolution;
 
-        int size = Mathf.Clamp(Mathf.RoundToInt(mapSize), 1, 640);
-        string center = lat.ToString(CultureInfo.InvariantCulture) + "," + lon.ToString(CultureInfo.InvariantCulture);
+        string center = lat.ToString("F6", CultureInfo.InvariantCulture) + ","
+                      + lon.ToString("F6", CultureInfo.InvariantCulture);
 
         string url = "https://maps.googleapis.com/maps/api/staticmap"
             + "?center=" + center
-            + "&zoom=" + zoom
-            + "&size=" + size + "x" + size
-            + "&scale=" + (int)mapResolution
-            + "&maptype=" + mapType
-            + "&markers=color:red%7Csize:mid%7C" + center   // "you are here" marker
+            + "&zoom=" + reqZoom
+            + "&size=" + ImageSize + "x" + ImageSize
+            + "&scale=" + (int)reqRes
+            + "&maptype=" + reqType
             + "&key=" + apiKey;
 
         using (UnityWebRequest www = UnityWebRequestTexture.GetTexture(url))
@@ -163,23 +200,28 @@ public class Map : MonoBehaviour
             }
             else
             {
-                if (rawImage.texture != null)
-                    Destroy(rawImage.texture);
-                rawImage.texture = DownloadHandlerTexture.GetContent(www);
+                Texture old = mapImage.texture;
+                mapImage.texture = DownloadHandlerTexture.GetContent(www);
+                if (old != null) Destroy(old);
+                mapImage.enabled = true;
+
+                fetchedZoom = reqZoom;
+                fetchedType = reqType;
+                fetchedRes = reqRes;
+                Project(lat, lon, reqZoom, out centerX, out centerY);
+                hasMap = true;
             }
         }
 
         loading = false;
     }
 
-    static float DistanceMeters(float lat1, float lon1, float lat2, float lon2)
+    static void Project(double lat, double lon, int z, out double x, out double y)
     {
-        const float R = 6371000f;
-        float dLat = (lat2 - lat1) * Mathf.Deg2Rad;
-        float dLon = (lon2 - lon1) * Mathf.Deg2Rad;
-        float a = Mathf.Sin(dLat / 2) * Mathf.Sin(dLat / 2)
-                + Mathf.Cos(lat1 * Mathf.Deg2Rad) * Mathf.Cos(lat2 * Mathf.Deg2Rad)
-                * Mathf.Sin(dLon / 2) * Mathf.Sin(dLon / 2);
-        return R * 2f * Mathf.Atan2(Mathf.Sqrt(a), Mathf.Sqrt(1 - a));
+        double scale = 256.0 * System.Math.Pow(2, z);
+        x = (lon + 180.0) / 360.0 * scale;
+        double s = System.Math.Sin(lat * System.Math.PI / 180.0);
+        s = System.Math.Max(-0.9999, System.Math.Min(0.9999, s));
+        y = (0.5 - System.Math.Log((1 + s) / (1 - s)) / (4 * System.Math.PI)) * scale;
     }
 }
