@@ -1,8 +1,10 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class Utilitis : MonoBehaviour
 {
+
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
@@ -18,5 +20,10 @@ public class Utilitis : MonoBehaviour
     public void SwitchScenes(string sceneName)
     {
         SceneManager.LoadScene(sceneName);
+    }
+
+    public void PressSettings()
+    {
+        GameManager.instance.Settings();
     }
 }
