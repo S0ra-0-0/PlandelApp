@@ -35,7 +35,11 @@
 
         <div id="imgInfo">
             <img>
-            <button id="imgDownload">DOWNLOAD</button>
+
+            <div id="imgInfoButtons">
+                <button id="imgDownload">DOWNLOAD</button>
+                <button id="openBig">OPEN IN NIEUW TABBLAD</button>
+            </div>
         </div>
     </div>
 

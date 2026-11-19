@@ -22,6 +22,14 @@ function ToggleOptions(card){
         currentDownloadLink = image;
     }
 
+    document.getElementById("imgDownload").addEventListener("click", () => {
+        downloadImage(currentDownloadLink, currentDownloadLink);
+    });
+
+    document.getElementById("openBig").addEventListener("click", () => {
+        window.open(currentDownloadLink);
+    });
+
     active = !active;
 }
 
@@ -42,7 +50,7 @@ for(i = 0; i < 2; i++){
 
 async function downloadImage(url, filename){
     const res = await fetch(url);
-    const blob = await res.blob;
+    const blob = await res.blob();
 
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
