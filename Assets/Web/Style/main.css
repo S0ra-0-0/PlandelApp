@@ -252,3 +252,79 @@ main {
     color: var(--text);
     cursor: pointer;
 }
+
+#lobbyMain{
+    padding-left: 5vw; padding-right: 5vw; 
+    padding-top: 2vh;
+
+
+}
+
+.lobbyInfoContainer {
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: border-color 0.2s ease;
+}
+
+.lobbyInfoContainer:hover {
+    border-color: var(--green);
+}
+
+.lobbyInfoContainer h2 {
+    margin: 0 0 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--text);
+}
+
+.lobbyInfoContainer p {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.55;
+    color: var(--muted);
+}
+
+.lobbyInfoContainer p a{
+    text-decoration: underline 1px solid var(--muted);
+}
+
+.lobbyInfoContainer p a:hover{
+    cursor: crosshair;
+}
+
+.lobbyInfoContainer div{
+    padding-top:  2vh;
+}
+
+
+.lobbyInfoContainer div button{
+    width: 10vw;
+    background-color:  red;
+    border: none;
+    border-radius: 10px;
+    color: var(--bg);
+    padding-top: 1vh;
+    padding-bottom: 1vh;
+    padding-left: 1vw;
+    padding-right: 1vw;
+
+    transition: 50ms ease-in-out;
+}
+
+.lobbyInfoContainer div button:hover{
+    background-color: var(--bg);
+    color: red;
+}
+
+
+#lobbyMain {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 24px;
+}

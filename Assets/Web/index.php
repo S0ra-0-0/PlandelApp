@@ -6,15 +6,10 @@
 </header>
 
 <body>
-    <div id="sideBar">
-        <img id="sideBarBanner" src="img/plandelbanner.jpg">
-        <ul>
-            <li><a>Speciale Afbeeldingen</a></li>
-            <li><a>Lobbies</a></li>
-            <li><a>Info</a></li>
-            <li><a>augghh idk</a></li>
-        </ul>
-    </div>
+    
+    <?php
+    include_once("templates/sideBar.php");
+    ?>
 
     <main>
         <div id="imgHolderMain">
