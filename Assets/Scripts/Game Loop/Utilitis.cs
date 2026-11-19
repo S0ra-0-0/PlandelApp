@@ -26,4 +26,24 @@ public class Utilitis : MonoBehaviour
     {
         GameManager.instance.Settings();
     }
+
+    public void PressTutorial()
+    {
+        GameManager.instance.Tutorial();
+    }
+
+    public void PressNotifications()
+    {
+        GameManager.instance.NotificationSettings();
+    }
+
+    public void NotificationsOn()
+    {
+        GameManager.instance.NotificationStatusOn();
+    }
+
+    public void NotificationsOff()
+    {
+        GameManager.instance.NotificationStatusOff();
+    }
 }
