@@ -1,0 +1,43 @@
+<html>
+<header>
+    <link rel="stylesheet" href="Style/main.css">
+    
+    <script src="JS/optionsControl.js" defer></script>
+</header>
+
+<body>
+    
+    <?php
+    include_once("templates/sideBar.php");
+    ?>
+
+    <main>
+        <div id="imgHolderMain">
+            <?php
+            include_once("Database/getImages.php");
+            ?>
+        </div>
+    </main>
+
+    <div id="imageOptions">
+        
+        <div id="topOptions">
+            <h1>Opties</h1>
+            <button id="optionControl">
+                <img src="img/icons/remove.png">
+            </button>
+        </div>
+
+        <div id="imgInfo">
+            <img>
+
+            <div id="imgInfoButtons">
+                <button id="imgDownload">DOWNLOAD</button>
+                <button id="openBig">OPEN IN NIEUW TABBLAD</button>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>
