@@ -1,6 +1,12 @@
 <?php
 include_once("connect.php");
 
+
+if (isset($_POST["deleteID"])) {
+    $delete = $pdo->prepare("DELETE FROM lobbies.Lobby WHERE LobbyID = ?");
+    $delete->execute([$_POST["deleteID"]]);
+}
+
 $statement = $pdo->query("SELECT LobbyID, LobbyCode, Seed FROM lobbies.Lobby");
 $objects = $statement->fetchAll(PDO::FETCH_ASSOC);
 
@@ -13,7 +19,10 @@ if(count($objects) > 0){
             <p><a title='copt lobby seed'>Lobby seed: ".$row["Seed"]."</a></p>
 
             <div>
-                <button>Stop lobby</button> 
+                <form method='post'>
+                    <input type='hidden' name='deleteID' value='".$row["LobbyID"]."'>
+                    <button>Stop lobby</button>
+                </form>
             </div>
         </div>";
     }
